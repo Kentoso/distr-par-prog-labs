@@ -79,6 +79,10 @@ int main(int argc, char* argv[]) {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        cout << "Using " << size << " MPI processes." << endl;
+    }
     
     if (argc < 3) {
         if (rank == 0)

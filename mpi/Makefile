@@ -5,7 +5,10 @@ LDFLAGS = -L/opt/homebrew/Cellar/open-mpi/5.0.7/lib -lmpi
 TARGET = sobel
 OBJS = sobel.o lodepng.o
 
-NUMBER_OF_PROCESSES = 1
+NUMBER_OF_PROCESSES = 2
+
+INPUT_FOLDER=
+OUTPUT_FOLDER=
 
 all: $(TARGET)
 
@@ -23,3 +26,6 @@ clean:
 
 example: $(TARGET)
 	mpirun -np $(NUMBER_OF_PROCESSES) ./$(TARGET) example_data example_output
+
+run: $(TARGET)
+	mpirun -np $(NUMBER_OF_PROCESSES) ./$(TARGET) $(INPUT_FOLDER) $(OUTPUT_FOLDER)
