@@ -105,11 +105,12 @@ int main(int argc, char* argv[]) {
             omp_set_num_threads(num_threads);
         }
     }
-
-    auto num_threads = omp_get_num_threads();
+    int num_threads = omp_get_max_threads();
     cout << "Using " << num_threads << " OpenMP threads." << endl;
 
     double totalStart = omp_get_wtime();
+    double totalProcessingTime = 0.0;
+    double totalIOTime = 0.0;
     int fileCount = 0;
 
     // Iterate over the input directory.
@@ -119,50 +120,59 @@ int main(int argc, char* argv[]) {
             // Check for .png extension (case-insensitive).
             if (filePath.extension() == ".png" || filePath.extension() == ".PNG") {
                 cout << "Processing file: " << filePath.filename().string() << endl;
+                
+                // --- Measure I/O time: Reading ---
+                double ioReadStart = omp_get_wtime();
                 vector<unsigned char> image;
                 unsigned width, height;
                 unsigned error = lodepng::decode(image, width, height, filePath.string());
+                double ioReadEnd = omp_get_wtime();
                 if (error) {
                     cout << "Error decoding PNG: " << lodepng_error_text(error) << endl;
                     continue;
                 }
-
-                double start = omp_get_wtime();
-
-                // Convert to grayscale.
+                double readTime = ioReadEnd - ioReadStart;
+                
+                // --- Measure Processing Time (computation only) ---
+                double procStart = omp_get_wtime();
                 vector<unsigned char> gray;
                 convertToGrayscale(image, gray, width, height);
-
-                // Apply the Sobel filter.
                 vector<unsigned char> sobelResult;
                 sobelFilter(gray, sobelResult, width, height);
-
-                // Convert the result back to RGBA.
                 vector<unsigned char> outputImage;
                 convertToRGBA(sobelResult, outputImage, width, height);
-
-                double end = omp_get_wtime();
-                double processing_time = end - start;
-
-                // Create output filename by appending _output before the extension.
+                double procEnd = omp_get_wtime();
+                double processingTime = procEnd - procStart;
+                
+                // --- Measure I/O time: Writing ---
+                double ioWriteStart = omp_get_wtime();
                 string stem = filePath.stem().string();
                 fs::path outputFile = outputDir / (stem + "_output" + filePath.extension().string());
-
                 error = lodepng::encode(outputFile.string(), outputImage, width, height);
+                double ioWriteEnd = omp_get_wtime();
                 if (error) {
                     cout << "Error encoding PNG: " << lodepng_error_text(error) << endl;
                     continue;
                 }
+                double writeTime = ioWriteEnd - ioWriteStart;
+                double fileIOTime = readTime + writeTime;
 
                 cout << "Processed " << filePath.filename().string() 
-                     << " in " << processing_time << " seconds. Saved to " 
+                     << " in " << processingTime << " seconds (processing only), I/O time: " 
+                     << fileIOTime << " seconds. Saved to " 
                      << outputFile.string() << endl;
                 fileCount++;
+                totalProcessingTime += processingTime;
+                totalIOTime += fileIOTime;
             }
         }
     }
     
     double totalEnd = omp_get_wtime();
-    cout << "Processed " << fileCount << " file(s) in " << (totalEnd - totalStart) << " seconds." << endl;
+    double overallTime = totalEnd - totalStart;
+    cout << "Processed " << fileCount << " file(s)." << endl;
+    cout << "Total processing time (excluding I/O): " << totalProcessingTime << " seconds." << endl;
+    cout << "Total I/O time: " << totalIOTime << " seconds." << endl;
+    cout << "Overall time (including I/O): " << overallTime << " seconds." << endl;
     return 0;
 }

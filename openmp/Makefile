@@ -5,6 +5,8 @@ LDFLAGS = -L/opt/homebrew/opt/libomp/lib -lomp
 TARGET = sobel
 OBJS = sobel.o lodepng.o
 
+NUMBER_OF_THREADS = 1
+
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
@@ -18,3 +20,6 @@ lodepng.o: lodepng.cpp lodepng.h
 
 clean:
 	rm -f $(TARGET) $(OBJS)
+
+example: $(TARGET)
+	./$(TARGET) example_data example_output $(NUMBER_OF_THREADS)
