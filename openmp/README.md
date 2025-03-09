@@ -8,3 +8,8 @@ To convert images to png:
 brew install imagemagick
 mogrify -format png *.*
 ```
+
+Example:
+```bash
+./sobel data30 output 4
+```
