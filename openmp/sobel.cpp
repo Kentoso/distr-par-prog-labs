@@ -10,7 +10,6 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-// Convert an RGBA image to grayscale.
 void convertToGrayscale(const vector<unsigned char>& rgba,
                         vector<unsigned char>& gray,
                         unsigned width, unsigned height) {
@@ -19,7 +18,6 @@ void convertToGrayscale(const vector<unsigned char>& rgba,
     for (unsigned i = 0; i < height; i++) {
         for (unsigned j = 0; j < width; j++) {
             int idx = 4 * (i * width + j);
-            // Using standard luminosity formula: 0.299R + 0.587G + 0.114B.
             gray[i * width + j] = static_cast<unsigned char>(
                 0.299 * rgba[idx] + 0.587 * rgba[idx + 1] + 0.114 * rgba[idx + 2]
             );
@@ -27,13 +25,11 @@ void convertToGrayscale(const vector<unsigned char>& rgba,
     }
 }
 
-// Apply the Sobel filter on the grayscale image.
 void sobelFilter(const vector<unsigned char>& gray,
                  vector<unsigned char>& result,
                  unsigned width, unsigned height) {
     result.resize(width * height, 0);
 
-    // Sobel kernels for horizontal (Gx) and vertical (Gy) gradients.
     int Gx[3][3] = { {-1, 0, 1},
                      {-2, 0, 2},
                      {-1, 0, 1} };
@@ -41,7 +37,6 @@ void sobelFilter(const vector<unsigned char>& gray,
                      { 0,  0,  0},
                      { 1,  2,  1} };
 
-    // Skip the border pixels.
     #pragma omp parallel for schedule(static)
     for (unsigned i = 1; i < height - 1; i++) {
         for (unsigned j = 1; j < width - 1; j++) {
@@ -60,7 +55,6 @@ void sobelFilter(const vector<unsigned char>& gray,
     }
 }
 
-// Convert a grayscale image back to an RGBA image.
 void convertToRGBA(const vector<unsigned char>& gray,
                    vector<unsigned char>& rgba,
                    unsigned width, unsigned height) {
@@ -87,18 +81,15 @@ int main(int argc, char* argv[]) {
     fs::path inputDir = argv[1];
     fs::path outputDir = argv[2];
 
-    // Check that the input directory exists.
     if (!fs::exists(inputDir) || !fs::is_directory(inputDir)) {
         cout << "Error: Input directory does not exist or is not a directory." << endl;
         return 1;
     }
 
-    // Create the output directory if it doesn't exist.
     if (!fs::exists(outputDir)) {
         fs::create_directories(outputDir);
     }
 
-    // Set number of OpenMP threads if provided.
     if (argc >= 4) {
         int num_threads = atoi(argv[3]);
         if (num_threads > 0) {
@@ -113,11 +104,9 @@ int main(int argc, char* argv[]) {
     double totalIOTime = 0.0;
     int fileCount = 0;
 
-    // Iterate over the input directory.
     for (const auto& entry : fs::directory_iterator(inputDir)) {
         if (entry.is_regular_file()) {
             fs::path filePath = entry.path();
-            // Check for .png extension (case-insensitive).
             if (filePath.extension() == ".png" || filePath.extension() == ".PNG") {
                 cout << "Processing file: " << filePath.filename().string() << endl;
                 
