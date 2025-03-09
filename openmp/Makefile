@@ -6,6 +6,8 @@ TARGET = sobel
 OBJS = sobel.o lodepng.o
 
 NUMBER_OF_THREADS = 1
+INPUT_FOLDER=
+OUTPUT_FOLDER=
 
 all: $(TARGET)
 
@@ -23,3 +25,6 @@ clean:
 
 example: $(TARGET)
 	./$(TARGET) example_data example_output $(NUMBER_OF_THREADS)
+
+run: $(TARGET)
+	./$(TARGET) $(INPUT_FOLDER) $(OUTPUT_FOLDER) $(NUMBER_OF_THREADS)

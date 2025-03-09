@@ -12,7 +12,6 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-// Convert an RGBA image to grayscale.
 void convertToGrayscale(const vector<unsigned char>& rgba,
                         vector<unsigned char>& gray,
                         unsigned width, unsigned height) {
@@ -27,7 +26,6 @@ void convertToGrayscale(const vector<unsigned char>& rgba,
     }
 }
 
-// Apply the Sobel filter on the grayscale image.
 void sobelFilter(const vector<unsigned char>& gray,
                  vector<unsigned char>& result,
                  unsigned width, unsigned height) {
@@ -56,7 +54,6 @@ void sobelFilter(const vector<unsigned char>& gray,
     }
 }
 
-// Convert a grayscale image back to an RGBA image.
 void convertToRGBA(const vector<unsigned char>& gray,
                    vector<unsigned char>& rgba,
                    unsigned width, unsigned height) {
@@ -76,6 +73,8 @@ void convertToRGBA(const vector<unsigned char>& gray,
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
     
+    double globalStart = MPI_Wtime();
+
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -211,14 +210,21 @@ int main(int argc, char* argv[]) {
     double totalIOTime = 0.0;
     int totalFileCount = 0;
     
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    cout << "Rank " << rank << " processed " << localFileCount << " files." <<  " In " << localProcessingTime << " sec (processing) and " << localIOTime << " sec (I/O)." << endl;
+
     MPI_Reduce(&localProcessingTime, &totalProcessingTime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&localIOTime, &totalIOTime, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&localFileCount, &totalFileCount, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     
+    double globalEnd = MPI_Wtime();
     if (rank == 0) {
+        double totalRealTime = globalEnd - globalStart;
         cout << "\nTotal files processed: " << totalFileCount << endl;
         cout << "Total processing time (computation only): " << totalProcessingTime << " sec." << endl;
         cout << "Total I/O time: " << totalIOTime << " sec." << endl;
+        cout << "Total wall clock time: " << totalRealTime << " sec." << endl;
     }
     
     MPI_Finalize();
