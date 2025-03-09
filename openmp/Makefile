@@ -1,0 +1,20 @@
+CXX = clang++
+CXXFLAGS = -I/opt/homebrew/opt/libomp/include -Xpreprocessor -fopenmp
+LDFLAGS = -L/opt/homebrew/opt/libomp/lib -lomp
+
+TARGET = sobel
+OBJS = sobel.o lodepng.o
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
+
+sobel.o: sobel.cpp lodepng.h
+	$(CXX) $(CXXFLAGS) -c sobel.cpp
+
+lodepng.o: lodepng.cpp lodepng.h
+	$(CXX) $(CXXFLAGS) -c lodepng.cpp
+
+clean:
+	rm -f $(TARGET) $(OBJS)

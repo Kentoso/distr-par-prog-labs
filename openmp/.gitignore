@@ -1,0 +1,5 @@
+lodepng.o
+sobel
+sobel.o
+*_output.png
+data
