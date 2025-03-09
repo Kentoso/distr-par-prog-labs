@@ -3,6 +3,7 @@
 #include <cmath>
 #include "lodepng.h"
 #include <omp.h>
+#include <cstdlib>  // for atoi
 
 using namespace std;
 
@@ -38,7 +39,7 @@ void sobelFilter(const vector<unsigned char>& gray,
                      { 1,  2,  1} };
 
     // Skip the border pixels.
-    #pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for schedule(static)
     for (unsigned i = 1; i < height - 1; i++) {
         for (unsigned j = 1; j < width - 1; j++) {
             int sumX = 0, sumY = 0;
@@ -76,11 +77,20 @@ void convertToRGBA(const vector<unsigned char>& gray,
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        cout << "Usage: " << argv[0] << " input.png output.png" << endl;
+        cout << "Usage: " << argv[0] << " input.png output.png [num_threads]" << endl;
         return 1;
     }
     const char* inputFilename = argv[1];
     const char* outputFilename = argv[2];
+
+    // Set number of OpenMP threads if provided.
+    if (argc >= 4) {
+        int num_threads = atoi(argv[3]);
+        if (num_threads > 0) {
+            omp_set_num_threads(num_threads);
+            cout << "Using " << num_threads << " OpenMP threads." << endl;
+        }
+    }
 
     // Load the PNG file (decoded as RGBA).
     vector<unsigned char> image;
@@ -90,6 +100,9 @@ int main(int argc, char* argv[]) {
         cout << "Error decoding PNG: " << lodepng_error_text(error) << endl;
         return 1;
     }
+
+    // Measure processing time (excluding I/O)
+    double start = omp_get_wtime();
 
     // Convert the image to grayscale.
     vector<unsigned char> gray;
@@ -103,6 +116,9 @@ int main(int argc, char* argv[]) {
     vector<unsigned char> outputImage;
     convertToRGBA(sobelResult, outputImage, width, height);
 
+    double end = omp_get_wtime();
+    double processing_time = end - start;
+
     // Write the output PNG file.
     error = lodepng::encode(outputFilename, outputImage, width, height);
     if (error) {
@@ -111,5 +127,6 @@ int main(int argc, char* argv[]) {
     }
 
     cout << "Sobel filter applied successfully. Output saved to " << outputFilename << endl;
+    cout << "Processing time: " << processing_time << " seconds." << endl;
     return 0;
 }
