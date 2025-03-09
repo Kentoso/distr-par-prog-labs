@@ -2,6 +2,6 @@ lodepng.o
 sobel
 sobel.o
 *_output.png
-data
+data*
 data_png
 output

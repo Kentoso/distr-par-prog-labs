@@ -42,7 +42,7 @@ void sobelFilter(const vector<unsigned char>& gray,
                      { 1,  2,  1} };
 
     // Skip the border pixels.
-    #pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for schedule(static)
     for (unsigned i = 1; i < height - 1; i++) {
         for (unsigned j = 1; j < width - 1; j++) {
             int sumX = 0, sumY = 0;
