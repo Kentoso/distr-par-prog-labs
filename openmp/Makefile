@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -I/opt/homebrew/opt/libomp/include -Xpreprocessor -fopenmp
+CXXFLAGS = -I/opt/homebrew/opt/libomp/include -Xpreprocessor -fopenmp -std=c++20
 LDFLAGS = -L/opt/homebrew/opt/libomp/lib -lomp
 
 TARGET = sobel

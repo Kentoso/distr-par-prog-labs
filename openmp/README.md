@@ -2,3 +2,9 @@ To run on MacOS with OpenMP support, you need to install the OpenMP library. You
 ```bash
 brew install libomp
 ```
+
+To convert images to png:
+```bash
+brew install imagemagick
+mogrify -format png *.*
+```

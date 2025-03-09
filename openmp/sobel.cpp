@@ -3,9 +3,12 @@
 #include <cmath>
 #include "lodepng.h"
 #include <omp.h>
-#include <cstdlib>  // for atoi
+#include <cstdlib>
+#include <filesystem>
+#include <string>
 
 using namespace std;
+namespace fs = std::filesystem;
 
 // Convert an RGBA image to grayscale.
 void convertToGrayscale(const vector<unsigned char>& rgba,
@@ -39,7 +42,7 @@ void sobelFilter(const vector<unsigned char>& gray,
                      { 1,  2,  1} };
 
     // Skip the border pixels.
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(dynamic)
     for (unsigned i = 1; i < height - 1; i++) {
         for (unsigned j = 1; j < width - 1; j++) {
             int sumX = 0, sumY = 0;
@@ -77,56 +80,89 @@ void convertToRGBA(const vector<unsigned char>& gray,
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        cout << "Usage: " << argv[0] << " input.png output.png [num_threads]" << endl;
+        cout << "Usage: " << argv[0] << " <input_directory> <output_directory> [num_threads]" << endl;
         return 1;
     }
-    const char* inputFilename = argv[1];
-    const char* outputFilename = argv[2];
+
+    fs::path inputDir = argv[1];
+    fs::path outputDir = argv[2];
+
+    // Check that the input directory exists.
+    if (!fs::exists(inputDir) || !fs::is_directory(inputDir)) {
+        cout << "Error: Input directory does not exist or is not a directory." << endl;
+        return 1;
+    }
+
+    // Create the output directory if it doesn't exist.
+    if (!fs::exists(outputDir)) {
+        fs::create_directories(outputDir);
+    }
 
     // Set number of OpenMP threads if provided.
     if (argc >= 4) {
         int num_threads = atoi(argv[3]);
         if (num_threads > 0) {
             omp_set_num_threads(num_threads);
-            cout << "Using " << num_threads << " OpenMP threads." << endl;
         }
     }
 
-    // Load the PNG file (decoded as RGBA).
-    vector<unsigned char> image;
-    unsigned width, height;
-    unsigned error = lodepng::decode(image, width, height, inputFilename);
-    if (error) {
-        cout << "Error decoding PNG: " << lodepng_error_text(error) << endl;
-        return 1;
+    auto num_threads = omp_get_num_threads();
+    cout << "Using " << num_threads << " OpenMP threads." << endl;
+
+    double totalStart = omp_get_wtime();
+    int fileCount = 0;
+
+    // Iterate over the input directory.
+    for (const auto& entry : fs::directory_iterator(inputDir)) {
+        if (entry.is_regular_file()) {
+            fs::path filePath = entry.path();
+            // Check for .png extension (case-insensitive).
+            if (filePath.extension() == ".png" || filePath.extension() == ".PNG") {
+                cout << "Processing file: " << filePath.filename().string() << endl;
+                vector<unsigned char> image;
+                unsigned width, height;
+                unsigned error = lodepng::decode(image, width, height, filePath.string());
+                if (error) {
+                    cout << "Error decoding PNG: " << lodepng_error_text(error) << endl;
+                    continue;
+                }
+
+                double start = omp_get_wtime();
+
+                // Convert to grayscale.
+                vector<unsigned char> gray;
+                convertToGrayscale(image, gray, width, height);
+
+                // Apply the Sobel filter.
+                vector<unsigned char> sobelResult;
+                sobelFilter(gray, sobelResult, width, height);
+
+                // Convert the result back to RGBA.
+                vector<unsigned char> outputImage;
+                convertToRGBA(sobelResult, outputImage, width, height);
+
+                double end = omp_get_wtime();
+                double processing_time = end - start;
+
+                // Create output filename by appending _output before the extension.
+                string stem = filePath.stem().string();
+                fs::path outputFile = outputDir / (stem + "_output" + filePath.extension().string());
+
+                error = lodepng::encode(outputFile.string(), outputImage, width, height);
+                if (error) {
+                    cout << "Error encoding PNG: " << lodepng_error_text(error) << endl;
+                    continue;
+                }
+
+                cout << "Processed " << filePath.filename().string() 
+                     << " in " << processing_time << " seconds. Saved to " 
+                     << outputFile.string() << endl;
+                fileCount++;
+            }
+        }
     }
-
-    // Measure processing time (excluding I/O)
-    double start = omp_get_wtime();
-
-    // Convert the image to grayscale.
-    vector<unsigned char> gray;
-    convertToGrayscale(image, gray, width, height);
-
-    // Apply the Sobel filter.
-    vector<unsigned char> sobelResult;
-    sobelFilter(gray, sobelResult, width, height);
-
-    // Convert the result back to RGBA for saving.
-    vector<unsigned char> outputImage;
-    convertToRGBA(sobelResult, outputImage, width, height);
-
-    double end = omp_get_wtime();
-    double processing_time = end - start;
-
-    // Write the output PNG file.
-    error = lodepng::encode(outputFilename, outputImage, width, height);
-    if (error) {
-        cout << "Error encoding PNG: " << lodepng_error_text(error) << endl;
-        return 1;
-    }
-
-    cout << "Sobel filter applied successfully. Output saved to " << outputFilename << endl;
-    cout << "Processing time: " << processing_time << " seconds." << endl;
+    
+    double totalEnd = omp_get_wtime();
+    cout << "Processed " << fileCount << " file(s) in " << (totalEnd - totalStart) << " seconds." << endl;
     return 0;
 }
